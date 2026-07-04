@@ -154,77 +154,33 @@ async def _railway_download(video_id: str, media_type: str) -> str | None:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     }
-    # For video, try /video/hq first, then /video; for audio just /audio
-    endpoints = ["video/hq", "video"] if media_type == "video" else ["audio"]
+    # For video, try /play/video/hq first, then /play/video; for audio just /play/audio
+    endpoints = ["play/video/hq", "play/video"] if media_type == "video" else ["play/audio"]
 
     try:
         async with aiohttp.ClientSession(headers=headers) as session:
-            data = None
             for endpoint in endpoints:
-                # Step 1 — get stream URL from Railway API
-                async with session.get(
-                    f"{RAILWAY_YT_API_URL}/{endpoint}",
-                    params={"id": video_id, "api_key": str(RAILWAY_YT_API_KEY)},
-                    timeout=aiohttp.ClientTimeout(total=20),
-                ) as resp:
-                    if resp.status == 200:
-                        try:
-                            data = await resp.json(content_type=None)
-                        except Exception as e:
-                            logger.warning("Railway YT API /%s returned invalid JSON: %s", endpoint, e)
-                            continue
-                            
-                        if data.get("success"):
-                            logger.info("Railway YT API: used /%s for %s", endpoint, video_id)
-                            break
-                        else:
-                            logger.warning("Railway YT API /%s error: %s", endpoint, data.get("detail", "unknown"))
-                    else:
-                        logger.warning("Railway YT API /%s status %s", endpoint, resp.status)
-
-            if not data or not data.get("success"):
-                logger.warning("Railway YT API: all endpoints failed for %s", video_id)
-                return None
-
-            # Extract best stream URL from response
-            if media_type == "video":
-                info      = data.get("video", {})
-                media_url = info.get("stream_url")
+                # Download stream directly from Railway proxy
+                media_url = f"{RAILWAY_YT_API_URL}/{endpoint}?id={video_id}&api_key={RAILWAY_YT_API_KEY}"
                 
-                if not media_url:
-                    stream_info = data.get("stream", {})
-                    media_url = stream_info.get("url")
-                    
-                if not media_url:
-                    best      = info.get("best_video") or (info.get("video_streams") or [None])[0]
-                    media_url = best.get("url") if best else None
-            else:
-                info     = data.get("audio", {})
-                best     = info.get("best_audio") or (info.get("audio_streams") or [None])[0]
-                media_url = best.get("url") if best else None
-
-            if not media_url:
-                logger.warning("Railway YT API: no stream URL in response for %s", video_id)
-                return None
-
-            # Step 2 — stream download to local file
-            async with session.get(
-                media_url,
-                timeout=aiohttp.ClientTimeout(total=timeout_dl),
-                allow_redirects=True,
-            ) as file_resp:
-                if file_resp.status != 200:
-                    logger.warning("Railway YT API stream failed: status %s", file_resp.status)
-                    return None
-                with open(file_path, "wb") as fobj:
-                    async for chunk in file_resp.content.iter_chunked(1024 * 1024):
-                        fobj.write(chunk)
-
-        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-            logger.info("Railway YT API ✓ %s → %s", video_id, file_path)
-            return file_path
-
-        return None
+                async with session.get(
+                    media_url,
+                    timeout=aiohttp.ClientTimeout(total=timeout_dl),
+                    allow_redirects=True,
+                ) as file_resp:
+                    if file_resp.status != 200:
+                        logger.warning("Railway YT API stream failed: status %s for %s", file_resp.status, endpoint)
+                        continue
+                        
+                    with open(file_path, "wb") as fobj:
+                        async for chunk in file_resp.content.iter_chunked(1024 * 1024):
+                            fobj.write(chunk)
+                            
+                    if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                        logger.info("Railway YT API ✓ %s → %s", video_id, file_path)
+                        return file_path
+                        
+            return None
 
     except Exception as exc:
         logger.warning("Railway YT API download failed for %s: %s", video_id, exc)
