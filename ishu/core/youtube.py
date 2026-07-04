@@ -153,6 +153,7 @@ async def _railway_download(video_id: str, media_type: str) -> str | None:
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "X-API-Key": str(RAILWAY_YT_API_KEY),
     }
     # For video, try /play/video/hq first, then /play/video; for audio just /play/audio
     endpoints = ["play/video/hq", "play/video"] if media_type == "video" else ["play/audio"]
@@ -161,7 +162,7 @@ async def _railway_download(video_id: str, media_type: str) -> str | None:
         async with aiohttp.ClientSession(headers=headers) as session:
             for endpoint in endpoints:
                 # Download stream directly from Railway proxy
-                media_url = f"{RAILWAY_YT_API_URL}/{endpoint}?id={video_id}&api_key={RAILWAY_YT_API_KEY}"
+                media_url = f"{RAILWAY_YT_API_URL}/{endpoint}?id={video_id}"
                 
                 async with session.get(
                     media_url,
