@@ -84,9 +84,14 @@ class TgCall(PyTgCalls):
                 media.time = 1
                 await db.add_call(chat_id)
 
+                # Shorten title to 50 characters max
+                short_title = media.title.split("|")[0].split("(")[0].strip()
+                if len(short_title) > 50:
+                    short_title = short_title[:47].rstrip() + "…"
+                    
                 text = _lang["play_media"].format(
                     media.url,
-                    media.title.split("|")[0].split("(")[0].strip(),
+                    short_title,
                     media.duration,
                     media.user,
                 )
