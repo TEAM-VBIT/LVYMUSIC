@@ -529,30 +529,80 @@ class YouTube:
         message_id: int,
         video: bool = False,
     ):
-        """Search YouTube and return a Track dataclass or None."""
+        """Search YouTube and return a Track dataclass or None.
+        Prioritizes official studio versions, avoids remixes/covers/live etc.
+        """
         from ishu.helpers._dataclass import Track
 
+        # Keywords to avoid in results unless explicitly in query
+        avoid_keywords = [
+            "remix", "cover", "live", "slowed", "reverb", "extended", "acoustic", 
+            "instrumental", "karaoke", "8d", "bass boosted", "nightcore", "edit"
+        ]
+        
+        # Check if query explicitly includes any avoid keyword
+        query_lower = query.strip().lower()
+        explicit_avoid = any(kw in query_lower for kw in avoid_keywords)
+
         try:
-            results = VideosSearch(query.strip(), limit=1)
-            result  = (await results.next())["result"]
-            if not result:
-                return None
-            r            = result[0]
-            vidid        = r["id"]
-            duration_min = r.get("duration") or "00:00"
-            duration_sec = int(utils.to_seconds(duration_min)) if duration_min else 0
-            return Track(
-                id           = vidid,
-                title        = r["title"],
-                url          = r.get("link", self.base + vidid),
-                duration     = duration_min,
-                duration_sec = duration_sec,
-                thumbnail    = r["thumbnails"][0]["url"].split("?")[0],
-                channel_name = (r.get("channel") or {}).get("name", ""),
-                message_id   = message_id,
-                video        = video,
-                time         = int(_time.time()),
-            )
+            # First try with "official audio" or "official video" modifier to prioritize official versions
+            search_queries = [
+                f"{query.strip()} official audio",
+                f"{query.strip()} official video",
+                query.strip()
+            ] if not explicit_avoid else [query.strip()]
+
+            for sq in search_queries:
+                results = VideosSearch(sq, limit=10)  # Get more results to filter
+                raw_results = (await results.next())["result"]
+                if not raw_results:
+                    continue
+
+                # Filter results
+                filtered = []
+                for r in raw_results:
+                    title_lower = r.get("title", "").lower()
+                    
+                    # Skip if any avoid keyword in title (unless explicit in query)
+                    if not explicit_avoid:
+                        if any(kw in title_lower for kw in avoid_keywords):
+                            continue
+
+                    # Check duration (skip very short/long)
+                    duration_str = r.get("duration") or "0:00"
+                    parts = duration_str.split(":")
+                    try:
+                        if len(parts) == 3:
+                            secs = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+                        elif len(parts) == 2:
+                            secs = int(parts[0]) * 60 + int(parts[1])
+                        else:
+                            secs = 0
+                    except (ValueError, IndexError):
+                        secs = 0
+                    
+                    if 30 <= secs <= 3600:  # 30 sec to 1 hour
+                        filtered.append(r)
+                
+                if filtered:
+                    r = filtered[0]  # Take best match
+                    vidid = r["id"]
+                    duration_min = r.get("duration") or "00:00"
+                    duration_sec = int(utils.to_seconds(duration_min)) if duration_min else 0
+                    return Track(
+                        id           = vidid,
+                        title        = r["title"],
+                        url          = r.get("link", self.base + vidid),
+                        duration     = duration_min,
+                        duration_sec = duration_sec,
+                        thumbnail    = r["thumbnails"][0]["url"].split("?")[0],
+                        channel_name = (r.get("channel") or {}).get("name", ""),
+                        message_id   = message_id,
+                        video        = video,
+                        time         = int(_time.time()),
+                    )
+
+            return None
         except Exception as e:
             logger.warning("YouTube search error for '%s': %s", query, e)
             return None
