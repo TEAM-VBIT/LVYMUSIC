@@ -697,16 +697,8 @@ class YouTube:
                 }
                 endpoint = "play/video/hq" if video else "play/audio"
                 media_url = f"{RAILWAY_YT_API_URL}/{endpoint}?id={video_id}"
-                
-                async with aiohttp.ClientSession(headers=headers) as session:
-                    async with session.head(
-                        media_url,
-                        timeout=aiohttp.ClientTimeout(total=10),
-                        allow_redirects=True,
-                    ) as resp:
-                        if resp.status in [200, 301, 302, 303, 304, 307, 308]:
-                            # Return the final URL after redirects
-                            return str(resp.url)
+                # The Railway endpoint itself is the stream URL we want! No need for head! Let's return it directly!
+                return media_url
             except Exception as e:
                 logger.warning("Railway get_stream_url failed: %s", e)
         
