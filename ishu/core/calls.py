@@ -60,17 +60,41 @@ class TgCall(PyTgCalls):
 
         # First, try to get a fast stream URL for instant playback
         media_path = media.stream_url
+        used_stream = False
         if not media_path and isinstance(media, Track):
             media_path = await yt.get_stream_url(media.id, video=media.video)
             if media_path:
                 media.stream_url = media_path
+                used_stream = True
 
-        # If still no stream URL, try to use file path
-        if not media_path:
-            media_path = media.file_path
+        # Now try to play, with fallback if needed
+        stream_success = False
+        if media_path:
+            try:
+                stream = types.MediaStream(
+                    media_path=media_path,
+                    audio_parameters=types.AudioQuality.HIGH,
+                    video_parameters=types.VideoQuality.HD_720p,
+                    audio_flags=types.MediaStream.Flags.REQUIRED,
+                    video_flags=(
+                        types.MediaStream.Flags.AUTO_DETECT
+                        if media.video
+                        else types.MediaStream.Flags.IGNORE
+                    ),
+                    ffmpeg_parameters=f"-ss {seek_time}" if seek_time > 1 else None,
+                )
+                await client.play(
+                    chat_id=chat_id,
+                    stream=stream,
+                    config=types.GroupCallConfig(auto_start=False),
+                )
+                stream_success = True
+            except Exception as e:
+                logger.warning(f"Stream URL failed: %s. Falling back to download.", e)
+                stream_success = False
 
-        # If no file either, try to download now
-        if not media_path and isinstance(media, Track):
+        # If stream failed or no stream not available, try download
+        if not stream_success and isinstance(media, Track):
             media.file_path = await yt.download(media.id, video=media.video)
             media_path = media.file_path
 
@@ -78,24 +102,26 @@ class TgCall(PyTgCalls):
             await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             return await self.play_next(chat_id)
 
-        stream = types.MediaStream(
-            media_path=media_path,
-            audio_parameters=types.AudioQuality.HIGH,
-            video_parameters=types.VideoQuality.HD_720p,
-            audio_flags=types.MediaStream.Flags.REQUIRED,
-            video_flags=(
-                types.MediaStream.Flags.AUTO_DETECT
-                if media.video
-                else types.MediaStream.Flags.IGNORE
-            ),
-            ffmpeg_parameters=f"-ss {seek_time}" if seek_time > 1 else None,
-        )
         try:
-            await client.play(
-                chat_id=chat_id,
-                stream=stream,
-                config=types.GroupCallConfig(auto_start=False),
-            )
+            # Now try again with downloaded file
+            if not stream_success:
+                stream = types.MediaStream(
+                    media_path=media_path,
+                    audio_parameters=types.AudioQuality.HIGH,
+                    video_parameters=types.VideoQuality.HD_720p,
+                    audio_flags=types.MediaStream.Flags.REQUIRED,
+                    video_flags=(
+                        types.MediaStream.Flags.AUTO_DETECT
+                        if media.video
+                        else types.MediaStream.Flags.IGNORE
+                    ),
+                    ffmpeg_parameters=f"-ss {seek_time}" if seek_time > 1 else None,
+                )
+                await client.play(
+                    chat_id=chat_id,
+                    stream=stream,
+                    config=types.GroupCallConfig(auto_start=False),
+                )
 
             if not seek_time:
                 media.time = 1
