@@ -676,6 +676,64 @@ class YouTube:
             return 1, stdout.decode().split("\n")[0]
         return 0, stderr.decode()
 
+    async def get_stream_url(
+        self,
+        video_id: str,
+        video: bool = False,
+    ) -> str | None:
+        """
+        Get a direct stream URL without downloading (for immediate playback).
+        Tries Railway API first, then yt-dlp.
+        Returns stream URL or None.
+        """
+        link = _normalize_youtube_link(video_id, self.base)
+        
+        # 1. Try Railway API first (fastest)
+        if RAILWAY_YT_API_URL and RAILWAY_YT_API_KEY:
+            try:
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "X-API-Key": str(RAILWAY_YT_API_KEY),
+                }
+                endpoint = "play/video/hq" if video else "play/audio"
+                media_url = f"{RAILWAY_YT_API_URL}/{endpoint}?id={video_id}"
+                
+                async with aiohttp.ClientSession(headers=headers) as session:
+                    async with session.head(
+                        media_url,
+                        timeout=aiohttp.ClientTimeout(total=10),
+                        allow_redirects=True,
+                    ) as resp:
+                        if resp.status in [200, 301, 302, 303, 304, 307, 308]:
+                            # Return the final URL after redirects
+                            return str(resp.url)
+            except Exception as e:
+                logger.warning("Railway get_stream_url failed: %s", e)
+        
+        # 2. Try yt-dlp for stream URL
+        try:
+            cookie = cookie_txt_file()
+            ydl_opts = {
+                "format": "bestvideo[height<=720]+bestaudio/best[height<=720]" if video else "bestaudio/best",
+                "quiet": True,
+                "no_warnings": True,
+                "cookiefile": cookie,
+            }
+
+            loop = asyncio.get_event_loop()
+            def _run():
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(link, download=False)
+                    return info.get("url") or (info.get("formats")[-1]["url"] if info.get("formats") else None)
+
+            url = await loop.run_in_executor(None, _run)
+            if url:
+                return url
+        except Exception as e:
+            logger.warning("yt-dlp get_stream_url failed: %s", e)
+            
+        return None
+
     # ── Download (main method called by play.py / calls.py) ──────────────────
     async def download(
         self,

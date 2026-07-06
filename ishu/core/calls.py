@@ -3,6 +3,7 @@
 # This file is part of AnonXMusic
 
 
+from pathlib import Path
 from ntgcalls import (ConnectionNotFound, TelegramServerError,
                       RTMPStreamingUnsupported, ConnectionError)
 from pyrogram.errors import (ChatSendMediaForbidden, ChatSendPhotosForbidden,
@@ -57,12 +58,14 @@ class TgCall(PyTgCalls):
             else config.DEFAULT_THUMB
         ) if config.THUMB_GEN else None
 
-        if not media.file_path:
+        # Use stream_url if available for fast play; else file_path
+        media_path = media.stream_url or media.file_path
+        if not media_path:
             await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             return await self.play_next(chat_id)
 
         stream = types.MediaStream(
-            media_path=media.file_path,
+            media_path=media_path,
             audio_parameters=types.AudioQuality.HIGH,
             video_parameters=types.VideoQuality.HD_720p,
             audio_flags=types.MediaStream.Flags.REQUIRED,
@@ -163,13 +166,24 @@ class TgCall(PyTgCalls):
 
         _lang = await lang.get_lang(chat_id)
         msg = await app.send_message(chat_id=chat_id, text=_lang["play_next"])
-        if not media.file_path:
-            media.file_path = await yt.download(media.id, video=media.video)
-            if not media.file_path:
-                await self.play_next(chat_id)
-                return await msg.edit_text(
-                    _lang["error_no_file"].format(config.SUPPORT_CHAT)
-                )
+        
+        # Prefer stream_url for fast play, else download
+        if not media.file_path and not media.stream_url:
+            fname = f"downloads/{media.id}.{'mp4' if media.video else 'webm'}"
+            if Path(fname).exists():
+                media.file_path = fname
+            else:
+                media.stream_url = await yt.get_stream_url(media.id, video=media.video)
+                
+            # If still no stream or file, try downloading
+            if not media.stream_url and not media.file_path:
+                media.file_path = await yt.download(media.id, video=media.video)
+                
+        if not media.stream_url and not media.file_path:
+            await self.play_next(chat_id)
+            return await msg.edit_text(
+                _lang["error_no_file"].format(config.SUPPORT_CHAT)
+            )
 
         media.message_id = msg.id
         await self.play_media(chat_id, msg, media)

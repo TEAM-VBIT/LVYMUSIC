@@ -12,6 +12,7 @@ class Media:
     duration: str = "00:00"
     duration_sec: int = 0
     file_path: str = None
+    stream_url: str = None
     message_id: int = 0
     title: str = None
     url: str = None
@@ -29,6 +30,7 @@ class Track:
     title: str = None
     url: str = None
     file_path: str = None
+    stream_url: str = None
     message_id: int = 0
     time: int = 0
     thumbnail: str = None
