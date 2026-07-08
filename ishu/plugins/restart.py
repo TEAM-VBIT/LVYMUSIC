@@ -10,7 +10,7 @@ import asyncio
 
 from pyrogram import filters, types
 
-from ishu import app, db, lang, stop
+from ishu import app, db, lang, stop, config
 
 
 @app.on_message(filters.command(["logs"]) & app.sudoers)
@@ -58,4 +58,37 @@ async def _restart(_, m: types.Message):
     try: os.remove("log.txt")
     except Exception: pass
 
+    os.execl(sys.executable, sys.executable, "-m", "ishu")
+
+
+@app.on_message(filters.command(["update"]) & filters.user(config.OWNER_ID))
+async def _update(_, m: types.Message):
+    sent = await m.reply_text("Checking for updates and pulling from git...")
+    
+    process = await asyncio.create_subprocess_shell(
+        "git pull",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await process.communicate()
+    
+    output = stdout.decode().strip()
+    error = stderr.decode().strip()
+    
+    if "Already up to date." in output:
+        return await sent.edit_text("Bot is already up to date!")
+        
+    if process.returncode != 0:
+        return await sent.edit_text(f"**Git Pull Failed:**\n`{error or output}`")
+        
+    await sent.edit_text(f"**Updated successfully!**\n\n`{output}`\n\nRestarting the bot...")
+    
+    for directory in ["cache", "downloads"]:
+        shutil.rmtree(directory, ignore_errors=True)
+        
+    await stop()
+    
+    try: os.remove("log.txt")
+    except Exception: pass
+    
     os.execl(sys.executable, sys.executable, "-m", "ishu")

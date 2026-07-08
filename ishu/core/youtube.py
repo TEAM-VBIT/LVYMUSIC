@@ -589,6 +589,9 @@ class YouTube:
                     vidid = r["id"]
                     duration_min = r.get("duration") or "00:00"
                     duration_sec = int(utils.to_seconds(duration_min)) if duration_min else 0
+                    view_count = None
+                    if "viewCount" in r and isinstance(r["viewCount"], dict):
+                        view_count = r["viewCount"].get("short") or r["viewCount"].get("text")
                     return Track(
                         id           = vidid,
                         title        = r["title"],
@@ -600,6 +603,7 @@ class YouTube:
                         message_id   = message_id,
                         video        = video,
                         time         = int(_time.time()),
+                        view_count   = view_count,
                     )
 
             return None
@@ -786,6 +790,10 @@ class YouTube:
             duration_sec = int(utils.to_seconds(duration_min)) if duration_min else 0
             thumbs       = data.get("thumbnails") or []
             thumbnail    = thumbs[0].get("url", "").split("?")[0] if thumbs else ""
+            view_count = None
+            if "viewCount" in data and isinstance(data["viewCount"], dict):
+                view_count = data["viewCount"].get("short") or data["viewCount"].get("text")
+            channel_name = (data.get("channel") or {}).get("name", "")
             tracks.append(Track(
                 id           = vidid,
                 title        = data.get("title") or vidid,
@@ -796,5 +804,7 @@ class YouTube:
                 user         = mention,
                 video        = video,
                 time         = int(_time.time()),
+                view_count   = view_count,
+                channel_name = channel_name,
             ))
         return tracks

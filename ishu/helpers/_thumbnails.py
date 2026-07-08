@@ -4,10 +4,8 @@
 
 import os
 import asyncio
-import random
 import aiohttp
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
-from collections import Counter
 from ishu import config
 from ishu.helpers import Track
 
@@ -20,7 +18,6 @@ except ImportError:
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FONT_TITLE_PATH = os.path.join(BASE_DIR, "font.ttf")
 FONT_INFO_PATH = os.path.join(BASE_DIR, "font2.ttf")
-TEMPLATE_PATH = os.path.join(BASE_DIR, "..", "assets", "template.png")
 
 
 def safe_font(path, size):
@@ -33,8 +30,6 @@ def safe_font(path, size):
 class Thumbnail:
     def __init__(self):
         self.size = (1280, 720)
-        self.font_title = safe_font(FONT_TITLE_PATH, 42)
-        self.font_info = safe_font(FONT_INFO_PATH, 32)
 
     async def start(self):
         os.makedirs("cache", exist_ok=True)
@@ -44,9 +39,6 @@ class Thumbnail:
 
         if not os.path.exists(FONT_INFO_PATH):
             print(f"Missing font: {FONT_INFO_PATH}")
-
-        if not os.path.exists(TEMPLATE_PATH):
-            print(f"Missing template: {TEMPLATE_PATH}")
 
         return True
 
@@ -70,42 +62,6 @@ class Thumbnail:
                 await asyncio.sleep(1)
         return output_path
 
-    def get_dominant_colors(self, img, n=3):
-        # Resize for performance
-        small_img = img.resize((50, 50), Image.Resampling.LANCZOS)
-        pixels = list(small_img.getdata())
-        # Ignore fully transparent pixels
-        pixels = [p[:3] for p in pixels if len(p) < 4 or p[3] > 50]
-        count = Counter(pixels)
-        return [c[0] for c in count.most_common(n)]
-
-    def create_simple_waveform(self, width, height, color):
-        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        
-        # Generate symmetric waveform bars (mirrored from center)
-        bar_count = 40
-        bar_width = 6
-        gap = 4
-        total_width = bar_count * (bar_width + gap)
-        start_x = (width - total_width) // 2
-        
-        for i in range(bar_count):
-            x = start_x + i * (bar_width + gap)
-            # Symmetric height (short in center, tall at ends)
-            dist_from_center = abs(i - bar_count // 2)
-            max_height = height - 10
-            min_height = height // 4
-            bar_height = max(min_height, max_height - (dist_from_center / (bar_count // 2)) * (max_height - min_height))
-            bar_height = int(bar_height + random.randint(-5, 5))
-            y_top = (height - bar_height) // 2
-            y_bottom = y_top + bar_height
-            draw.rectangle([x, y_top, x + bar_width, y_bottom], fill=(*color, 220))
-        
-        # Blur slightly
-        img = img.filter(ImageFilter.GaussianBlur(0.5))
-        return img
-
     async def generate(self, song: Track) -> str:
         try:
             os.makedirs("cache", exist_ok=True)
@@ -124,17 +80,16 @@ class Thumbnail:
                 except Exception:
                     return config.DEFAULT_THUMB
 
+            # Dynamic font loading for proper sizes
+            font_title = safe_font(FONT_TITLE_PATH, 34)
+            font_info = safe_font(FONT_INFO_PATH, 24)
+            font_time = safe_font(FONT_INFO_PATH, 20)
+            font_brand = safe_font(FONT_TITLE_PATH, 26)
+
             W, H = self.size
 
-            # --- 1. ENHANCED ALBUM ART ---
-            enhancer = ImageEnhance.Sharpness(src)
-            src_enhanced = enhancer.enhance(1.1)
-            color_enhancer = ImageEnhance.Color(src_enhanced)
-            src_enhanced = color_enhancer.enhance(1.15)
-            contrast_enhancer = ImageEnhance.Contrast(src_enhanced)
-            src_enhanced = contrast_enhancer.enhance(1.05)
-
-            # --- 2. DARK BLURRED BACKGROUND ---
+            # --- 1. DARK BLURRED BACKGROUND ---
+            # Crop source to 16:9 aspect ratio
             bg_ratio = W / H
             src_ratio = src.width / src.height
             if src_ratio > bg_ratio:
@@ -147,90 +102,148 @@ class Thumbnail:
                 bg = src.crop((0, offset, src.width, offset + new_h))
 
             bg = bg.resize((W, H), Image.Resampling.LANCZOS)
-            bg = bg.filter(ImageFilter.GaussianBlur(45))
+            bg = bg.filter(ImageFilter.GaussianBlur(40))
             bg = bg.convert("RGBA")
+            
             # Dark overlay
-            bg_overlay = Image.new("RGBA", (W, H), (0, 0, 0, 150))
+            bg_overlay = Image.new("RGBA", (W, H), (0, 0, 0, 140))
             bg = Image.alpha_composite(bg, bg_overlay)
 
-            # Add vignette
-            vignette = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-            draw_vignette = ImageDraw.Draw(vignette)
-            draw_vignette.ellipse([-200, -200, W + 200, H + 200], fill=(0, 0, 0, 0))
-            draw_vignette.ellipse([300, 150, W - 300, H - 150], fill=(0, 0, 0, 160))
-            vignette = vignette.filter(ImageFilter.GaussianBlur(150))
-            bg = Image.alpha_composite(bg, vignette)
+            # Draw Brand Header on Background
+            draw_bg = ImageDraw.Draw(bg)
+            try:
+                from ishu import app
+                bot_name = app.name or "Ishu"
+            except Exception:
+                bot_name = "Ishu"
 
-            # --- 3. COVER ART (LEFT SIDE) ---
-            cover_x, cover_y = 100, 110
-            cover_w, cover_h = 500, 500
-            cover_radius = 60
+            if "music" not in bot_name.lower():
+                brand_text = f"[ {bot_name.upper()} MUSIC ]"
+            else:
+                brand_text = f"[ {bot_name.upper()} ]"
 
-            # Large soft shadow for cover
+            brand_bbox = draw_bg.textbbox((0, 0), brand_text, font=font_brand)
+            brand_w = brand_bbox[2] - brand_bbox[0]
+            draw_bg.text((W - brand_w - 60, 40), brand_text, fill=(255, 255, 255, 220), font=font_brand)
+
+            # --- 2. CARD COMPONENT ---
+            card_w, card_h = 900, 560
+            card_x = (W - card_w) // 2
+            card_y = (H - card_h) // 2 + 20  # Shift down slightly to balance brand header
+
+            # Draw soft drop shadow behind the card
             shadow_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
             shadow_draw = ImageDraw.Draw(shadow_layer)
             shadow_draw.rounded_rectangle(
-                (cover_x + 15, cover_y + 15, cover_x + cover_w + 15, cover_y + cover_h + 15),
-                radius=cover_radius + 10,
-                fill=(0, 0, 0, 220),
+                (card_x - 4, card_y + 8, card_x + card_w + 4, card_y + card_h + 12),
+                radius=40,
+                fill=(0, 0, 0, 110),
             )
-            shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(35))
+            shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(25))
             bg = Image.alpha_composite(bg, shadow_layer)
 
-            # Cover art
-            cover_resized = src_enhanced.resize((cover_w, cover_h), Image.Resampling.LANCZOS)
+            # Create Card Layer
+            card_img = Image.new("RGBA", (card_w, card_h), (245, 245, 245, 255))
+            card_draw = ImageDraw.Draw(card_img)
+
+            # --- 3. INNER COVER IMAGE ---
+            cover_w, cover_h = 820, 320
+            cover_x, cover_y = 40, 40
+            cover_radius = 20
+
+            cover_resized = ImageOps.fit(src, (cover_w, cover_h), Image.Resampling.LANCZOS)
+            
+            # Create cover mask for rounded corners
             cover_mask = Image.new("L", (cover_w, cover_h), 0)
             ImageDraw.Draw(cover_mask).rounded_rectangle(
                 (0, 0, cover_w, cover_h), radius=cover_radius, fill=255
             )
-            bg.paste(cover_resized, (cover_x, cover_y), cover_mask)
+            card_img.paste(cover_resized, (cover_x, cover_y), cover_mask)
 
-            # --- 4. TEXT (RIGHT SIDE) ---
-            draw = ImageDraw.Draw(bg)
-            text_x = 680
-            text_max_w = 500
-
+            # --- 4. DETAILS SECTION ---
+            # Title
+            title_text = unidecode(str(song.title))
             def ellipsize(s, font, max_w):
-                if draw.textbbox((0, 0), s, font=font)[2] <= max_w:
+                bbox = card_draw.textbbox((0, 0), s, font=font)
+                if (bbox[2] - bbox[0]) <= max_w:
                     return s
                 lo, hi = 1, len(s)
                 best = "…"
                 while lo <= hi:
                     mid = (lo + hi) // 2
                     cand = s[:mid].rstrip() + "…"
-                    if draw.textbbox((0, 0), cand, font=font)[2] <= max_w:
+                    bbox = card_draw.textbbox((0, 0), cand, font=font)
+                    if (bbox[2] - bbox[0]) <= max_w:
                         best = cand
                         lo = mid + 1
                     else:
                         hi = mid - 1
                 return best
 
-            # Get dominant color for accent
-            dominant_colors = self.get_dominant_colors(src_enhanced)
-            dominant_color = dominant_colors[0]
+            title_str = ellipsize(title_text, font_title, 820)
+            title_y = 385
+            card_draw.text((40, title_y), title_str, fill=(20, 20, 20, 255), font=font_title)
 
-            # Title
-            title_str = ellipsize(unidecode(str(song.title)), self.font_title, text_max_w)
-            title_y = 180
-            # Text shadow
-            draw.text((text_x + 3, title_y + 3), title_str, fill=(0, 0, 0, 180), font=self.font_title)
-            draw.text((text_x, title_y), title_str, fill=(255, 255, 255, 255), font=self.font_title)
+            # Subtitle (Channel name & views)
+            sub_text = song.channel_name or "YouTube"
+            if song.view_count:
+                sub_text += f"   ·   {song.view_count}"
+            subtitle_str = ellipsize(sub_text, font_info, 820)
+            subtitle_y = 435
+            card_draw.text((40, subtitle_y), subtitle_str, fill=(100, 100, 100, 255), font=font_info)
 
-            # Artist/Channel
-            artist_str = ellipsize(unidecode(str(song.channel_name)), self.font_info, text_max_w + 40)
-            artist_y = title_y + 70
-            # Text shadow
-            draw.text((text_x + 2, artist_y + 2), artist_str, fill=(0, 0, 0, 130), font=self.font_info)
-            draw.text((text_x, artist_y), artist_str, fill=(235, 235, 235, 255), font=self.font_info)
+            # --- 5. PROGRESS BAR ---
+            bar_x = 40
+            bar_y = 485
+            bar_w = 820
+            bar_h = 6
+            # Track
+            card_draw.rounded_rectangle(
+                (bar_x, bar_y, bar_x + bar_w, bar_y + bar_h),
+                radius=3,
+                fill=(220, 220, 220, 255)
+            )
+            # Filled (35% default for visual playback representation)
+            progress_pct = 0.35
+            fill_w = int(bar_w * progress_pct)
+            card_draw.rounded_rectangle(
+                (bar_x, bar_y, bar_x + fill_w, bar_y + bar_h),
+                radius=3,
+                fill=(229, 57, 53, 255)
+            )
+            # Slider thumb (red dot)
+            thumb_radius = 6
+            thumb_cx = bar_x + fill_w
+            thumb_cy = bar_y + (bar_h // 2)
+            card_draw.ellipse(
+                (thumb_cx - thumb_radius, thumb_cy - thumb_radius, thumb_cx + thumb_radius, thumb_cy + thumb_radius),
+                fill=(229, 57, 53, 255)
+            )
 
-            # --- 5. SIMPLE WAVEFORM (BOTTOM RIGHT) ---
-            waveform_x = 680
-            waveform_y = H - 180
-            waveform_w = 500
-            waveform_h = 80
-            waveform = self.create_simple_waveform(waveform_w, waveform_h, dominant_color)
-            bg.paste(waveform, (waveform_x, waveform_y), waveform)
+            # Timestamps
+            time_y = 505
+            card_draw.text((40, time_y), "0:00", fill=(100, 100, 100, 255), font=font_time)
+            
+            duration_str = song.duration or "00:00"
+            dur_bbox = card_draw.textbbox((0, 0), duration_str, font=font_time)
+            dur_w = dur_bbox[2] - dur_bbox[0]
+            card_draw.text((40 + 820 - dur_w, time_y), duration_str, fill=(100, 100, 100, 255), font=font_time)
 
+            # --- 6. RED BOTTOM STRIP ---
+            card_draw.rectangle(
+                (0, card_h - 8, card_w, card_h),
+                fill=(229, 57, 53, 255)
+            )
+
+            # Paste Card onto Background with Rounded Corners Mask
+            card_mask = Image.new("L", (card_w, card_h), 0)
+            ImageDraw.Draw(card_mask).rounded_rectangle(
+                (0, 0, card_w, card_h), radius=35, fill=255
+            )
+            
+            bg.paste(card_img, (card_x, card_y), card_mask)
+
+            # Save final image
             out = bg.convert("RGB")
             out.save(final_path, "JPEG", quality=92, optimize=True)
 
@@ -243,7 +256,7 @@ class Thumbnail:
             return final_path
 
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error generating thumbnail: {e}")
             import traceback
             traceback.print_exc()
             return config.DEFAULT_THUMB
