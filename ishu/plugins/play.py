@@ -12,27 +12,29 @@ from ishu import anon, app, config, db, lang, logger, queue, tg, yt
 from ishu.helpers import buttons, utils
 from ishu.helpers._play import checkUB
 
-# Track active background download tasks to avoid duplicates
+# Track active background stream URL extraction tasks to avoid duplicates
 _background_tasks = set()
 
 
-async def _background_download_task(track) -> None:
-    """Background task to download a queued track if not already downloaded."""
+async def _background_stream_task(track) -> None:
+    """Background task to pre-extract stream URL for a queued track."""
     try:
-        if not track.file_path:
-            fname = f"downloads/{track.id}.{'mp4' if track.video else 'webm'}"
-            if not Path(fname).exists():
-                track.file_path = await yt.download(track.id, video=track.video)
-                logger.info("Background download complete: %s", track.id)
+        if not track.stream_url and not track.file_path:
+            stream_url = await yt.get_stream_url(track.id, video=track.video)
+            if stream_url:
+                track.stream_url = stream_url
+                logger.info("Background stream URL ready: %s", track.id)
+            else:
+                logger.warning("Background stream URL extraction failed for %s, will retry on play", track.id)
     except Exception as e:
-        logger.warning("Background download failed for %s: %s", track.id, e)
+        logger.warning("Background stream task failed for %s: %s", track.id, e)
 
 
-def _start_background_download(track) -> None:
-    """Start a background download task for a track if not already running."""
+def _start_background_stream(track) -> None:
+    """Start a background stream URL extraction task for a track if not already running."""
     if track.id not in _background_tasks:
         _background_tasks.add(track.id)
-        task = asyncio.create_task(_background_download_task(track))
+        task = asyncio.create_task(_background_stream_task(track))
         task.add_done_callback(lambda _: _background_tasks.discard(track.id))
 
 
@@ -41,7 +43,7 @@ def playlist_to_queue(chat_id: int, tracks: list) -> str:
     for track in tracks:
         pos = queue.add(chat_id, track)
         text += f"<b>{pos}.</b> {track.title}\n"
-        _start_background_download(track)
+        _start_background_stream(track)
     text = text[:1948] + "</blockquote>"
     return text
 
@@ -137,8 +139,8 @@ async def play_hndlr(
                 ),
             )
             
-            # Start background download for the queued song
-            _start_background_download(file)
+            # Start background stream URL extraction for the queued song
+            _start_background_stream(file)
 
             if tracks:
                 added = playlist_to_queue(m.chat.id, tracks)
@@ -165,8 +167,7 @@ async def play_hndlr(
     # Start playback
     await anon.play_media(chat_id=m.chat.id, message=sent, media=file)
     
-    # Start background download of this track (and playlist tracks) for future
-    _start_background_download(file)
+    # Pre-extract stream URLs for playlist tracks in background
     if tracks:
         added = playlist_to_queue(m.chat.id, tracks)
         await app.send_message(
