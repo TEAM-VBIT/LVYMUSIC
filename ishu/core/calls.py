@@ -33,6 +33,19 @@ class TgCall(PyTgCalls):
 
     async def stop(self, chat_id: int) -> None:
         client = await db.get_assistant(chat_id)
+        
+        # Clean up files for all media items in queue
+        q_items = queue.get_queue(chat_id)
+        for item in q_items:
+            if getattr(item, "file_path", None):
+                try:
+                    path = Path(item.file_path)
+                    if path.exists():
+                        path.unlink()
+                        logger.info("Cleaned up queued file on stop: %s", item.file_path)
+                except Exception as e:
+                    logger.warning("Failed to delete file on stop %s: %s", item.file_path, e)
+
         queue.clear(chat_id)
         await db.remove_call(chat_id)
         await db.set_loop(chat_id, 0)
@@ -188,6 +201,17 @@ class TgCall(PyTgCalls):
         if loop := await db.get_loop(chat_id):
             await db.set_loop(chat_id, loop - 1)
             return await self.replay(chat_id)
+
+        # Clean up the finished/skipped song's file
+        current_media = queue.get_current(chat_id)
+        if current_media and getattr(current_media, "file_path", None):
+            try:
+                path = Path(current_media.file_path)
+                if path.exists():
+                    path.unlink()
+                    logger.info("Cleaned up played file: %s", current_media.file_path)
+            except Exception as e:
+                logger.warning("Failed to delete played file %s: %s", current_media.file_path, e)
 
         media = queue.get_next(chat_id)
         try:
