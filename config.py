@@ -22,15 +22,15 @@ class Config:
         self.SESSION2 = getenv("SESSION2", None)
         self.SESSION3 = getenv("SESSION3", None)
 
-        self.SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/titanic_network")
-        self.SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/+WAOT47P-70QwOTBl")
+        self.SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/llDARK_WORLDll")
+        self.SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/llDARK_WORLDll")
 
         self.YTPROXY_URL = getenv("YTPROXY_URL", "https://tgapi.xbitcode.com")  # xBit Music Endpoint
         self.YT_API_KEY = getenv("YT_API_KEY", "")  # Get from https://t.me/tgmusic_apibot
 
         # Railway self-hosted YouTube API
-        self.RAILWAY_YT_API_URL = getenv("RAILWAY_YT_API_URL", "https://youtube-api-music-production-77fb.up.railway.app")
-        self.RAILWAY_YT_API_KEY = getenv("RAILWAY_YT_API_KEY", "jd7hSNs6ilyVu4i~EkFx4_yONJhz.5bx")
+        self.RAILWAY_YT_API_URL = getenv("RAILWAY_YT_API_URL", "youtube-api-music-production-1f84.up.railway.app")
+        self.RAILWAY_YT_API_KEY = getenv("RAILWAY_YT_API_KEY", "gygday~ChKJQLxXFSnGcXPMtFZcWhE3")
 
         # Shruti API — Primary download source (get key from @SHRUTIAPIBOT)
         self.SHRUTI_API_URL = getenv("SHRUTI_API_URL", "http://api01.shrutibots.site")
@@ -50,8 +50,8 @@ class Config:
         ]
         self.COOKIES_DATA = getenv("COOKIES_DATA", "")
         self.DEFAULT_THUMB = getenv("DEFAULT_THUMB", "https://te.legra.ph/file/3e40a408286d4eda24191.jpg")
-        self.PING_IMG = getenv("PING_IMG", "https://files.catbox.moe/haagg2.png")
-        self.START_IMG = getenv("START_IMG", "https://files.catbox.moe/zvziwk.jpg")
+        self.PING_IMG = getenv("PING_IMG", "https://i.ibb.co/fdwsRzM6/x.jpg")
+        self.START_IMG = getenv("START_IMG", "https://i.ibb.co/fdwsRzM6/x.jpg")
 
     def check(self):
         missing = [
