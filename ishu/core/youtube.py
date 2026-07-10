@@ -796,6 +796,7 @@ class YouTube:
           a HEAD request before returning to avoid silent failures.
         """
         link = _normalize_youtube_link(video_id, self.base)
+        cookie = cookie_txt_file()
 
         # ── Method 1: yt-dlp with cookies base64 ─────────────────────────────
         if cookie:
