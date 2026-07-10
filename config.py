@@ -34,7 +34,7 @@ class Config:
 
         # Shruti API — Primary download source (get key from @SHRUTIAPIBOT)
         self.SHRUTI_API_URL = getenv("SHRUTI_API_URL", "http://api01.shrutibots.site")
-        self.SHRUTI_API_KEY = getenv("SHRUTI_API_KEY", "")
+        self.SHRUTI_API_KEY = getenv("SHRUTI_API_KEY", "ShrutiBotsevycfTGYTYEDp7sYjdl8")
         
         self.AUTO_LEAVE: bool = getenv("AUTO_LEAVE", "False").lower() == "true"
         self.AUTO_END: bool = getenv("AUTO_END", "False").lower() == "true"
