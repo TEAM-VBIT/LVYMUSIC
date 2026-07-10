@@ -25,15 +25,34 @@ class Config:
         self.SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/llDARK_WORLDll")
         self.SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/llDARK_WORLDll")
 
-        self.YTPROXY_URL = getenv("YTPROXY_URL", "https://tgapi.xbitcode.com")  # xBit Music Endpoint
+        ytproxy_url = getenv("YTPROXY_URL", "https://tgapi.xbitcode.com")
+        if ytproxy_url:
+            ytproxy_url = ytproxy_url.strip()
+            if not ytproxy_url.startswith(("http://", "https://")):
+                ytproxy_url = f"https://{ytproxy_url}"
+            ytproxy_url = ytproxy_url.rstrip("/")
+        self.YTPROXY_URL = ytproxy_url
+
         self.YT_API_KEY = getenv("YT_API_KEY", "")  # Get from https://t.me/tgmusic_apibot
 
         # Railway self-hosted YouTube API
-        self.RAILWAY_YT_API_URL = getenv("RAILWAY_YT_API_URL", "https://youtube-api-music-production-1f84.up.railway.app")
+        railway_url = getenv("RAILWAY_YT_API_URL", "https://youtube-api-music-production-1f84.up.railway.app")
+        if railway_url:
+            railway_url = railway_url.strip()
+            if not railway_url.startswith(("http://", "https://")):
+                railway_url = f"https://{railway_url}"
+            railway_url = railway_url.rstrip("/")
+        self.RAILWAY_YT_API_URL = railway_url
         self.RAILWAY_YT_API_KEY = getenv("RAILWAY_YT_API_KEY", ".gygday~ChKJQLxXFSnGcXPMtFZcWhE3")
 
         # Shruti API — Primary download source (get key from @SHRUTIAPIBOT)
-        self.SHRUTI_API_URL = getenv("SHRUTI_API_URL", "http://api01.shrutibots.site")
+        shruti_url = getenv("SHRUTI_API_URL", "http://api01.shrutibots.site")
+        if shruti_url:
+            shruti_url = shruti_url.strip()
+            if not shruti_url.startswith(("http://", "https://")):
+                shruti_url = f"https://{shruti_url}"
+            shruti_url = shruti_url.rstrip("/")
+        self.SHRUTI_API_URL = shruti_url
         self.SHRUTI_API_KEY = getenv("SHRUTI_API_KEY", "ShrutiBotsevycfTGYTYEDp7sYjdl8")
         
         self.AUTO_LEAVE: bool = getenv("AUTO_LEAVE", "False").lower() == "true"
@@ -45,8 +64,8 @@ class Config:
         self.LANG_CODE = getenv("LANG_CODE", "en")
 
         self.COOKIES_URL = [
-            url for url in getenv("COOKIES_URL", "").split(" ")
-            if url and "batbin.me" in url
+            url.strip() for url in getenv("COOKIES_URL", "").split(" ")
+            if url.strip() and url.strip().startswith(("http://", "https://"))
         ]
         self.COOKIES_DATA = getenv("COOKIES_DATA", "")
         self.DEFAULT_THUMB = getenv("DEFAULT_THUMB", "https://te.legra.ph/file/3e40a408286d4eda24191.jpg")

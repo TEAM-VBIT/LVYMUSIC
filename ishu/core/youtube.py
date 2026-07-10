@@ -470,18 +470,37 @@ class YouTube:
         self.api      = None
         self.cookies_dir = os.path.join(os.path.dirname(__file__), "..", "cookies")
 
-        # Decode COOKIES_DATA (base64) env var → cookie_0.txt for yt-dlp use
+        # Decode COOKIES_DATA (base64 or raw Netscape) env var → cookie_0.txt for yt-dlp use
         cookies_data = getattr(config, "COOKIES_DATA", None) or os.environ.get("COOKIES_DATA")
         if cookies_data:
+            cookies_data = cookies_data.strip()
+            decoded = None
+            # Try base64 decoding first
             try:
                 import base64
                 decoded = base64.b64decode(cookies_data).decode("utf-8")
-                os.makedirs(self.cookies_dir, exist_ok=True)
-                with open(os.path.join(self.cookies_dir, "cookie_0.txt"), "w") as f:
-                    f.write(decoded)
-                logger.info("Loaded cookies from COOKIES_DATA (base64).")
-            except Exception as e:
-                logger.error("Error decoding COOKIES_DATA: %s", e)
+                # Simple check to see if it looks like a netscape cookie file
+                if "# Netscape" not in decoded and "\t" not in decoded:
+                    # If decoded looks like garbage, maybe the original data was raw text
+                    decoded = None
+            except Exception:
+                decoded = None
+
+            if not decoded:
+                # Fall back to raw text if it looks like cookies format
+                if "# Netscape" in cookies_data or "\t" in cookies_data:
+                    decoded = cookies_data
+
+            if decoded:
+                try:
+                    os.makedirs(self.cookies_dir, exist_ok=True)
+                    with open(os.path.join(self.cookies_dir, "cookie_0.txt"), "w") as f:
+                        f.write(decoded)
+                    logger.info("Loaded cookies from COOKIES_DATA.")
+                except Exception as e:
+                    logger.error("Error writing cookies file: %s", e)
+            else:
+                logger.error("COOKIES_DATA provided but could not be parsed as Base64 or raw Netscape cookies.")
 
         self.dl_stats = {
             "total_requests": 0,
@@ -779,46 +798,40 @@ class YouTube:
         link = _normalize_youtube_link(video_id, self.base)
 
         # ── Method 1: yt-dlp with cookies base64 ─────────────────────────────
-        try:
-            cookie = cookie_txt_file()
-            ydl_opts = {
-                "format": (
-                    "bestvideo[height<=720]+bestaudio/best[height<=720]"
-                    if video else "bestaudio/best"
-                ),
-                "quiet":       True,
-                "no_warnings": True,
-            }
-            if cookie:
-                ydl_opts["cookiefile"] = cookie
+        if cookie:
+            try:
+                ydl_opts = {
+                    "format": (
+                        "bestvideo[height<=720]+bestaudio/best[height<=720]"
+                        if video else "bestaudio/best"
+                    ),
+                    "quiet":       True,
+                    "no_warnings": True,
+                    "cookiefile":  cookie,
+                }
+                loop = asyncio.get_event_loop()
+                def _run():
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        info = ydl.extract_info(link, download=False)
+                        # For merged formats, prefer the best audio URL
+                        if info.get("url"):
+                            return info["url"]
+                        formats = info.get("formats") or []
+                        if formats:
+                            return formats[-1].get("url")
+                        return None
 
-            loop = asyncio.get_event_loop()
-            def _run():
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(link, download=False)
-                    # For merged formats, prefer the best audio URL
-                    if info.get("url"):
-                        return info["url"]
-                    formats = info.get("formats") or []
-                    if formats:
-                        return formats[-1].get("url")
-                    return None
-
-            url = await asyncio.wait_for(
-                loop.run_in_executor(None, _run),
-                timeout=30,
-            )
-            if url:
-                logger.info(
-                    "Stream URL via %s: %s",
-                    "Cookies Base64" if cookie else "yt-dlp",
-                    video_id,
+                url = await asyncio.wait_for(
+                    loop.run_in_executor(None, _run),
+                    timeout=30,
                 )
-                return url
-        except asyncio.TimeoutError:
-            logger.warning("get_stream_url yt-dlp timed out for %s", video_id)
-        except Exception as e:
-            logger.warning("get_stream_url yt-dlp failed for %s: %s", video_id, e)
+                if url:
+                    logger.info("Stream URL via Cookies Base64: %s", video_id)
+                    return url
+            except asyncio.TimeoutError:
+                logger.warning("get_stream_url yt-dlp (cookies) timed out for %s", video_id)
+            except Exception as e:
+                logger.warning("get_stream_url yt-dlp (cookies) failed for %s: %s", video_id, e)
 
         # ── Method 2: Railway API (validated) ────────────────────────────────
         if RAILWAY_YT_API_URL and RAILWAY_YT_API_KEY:
@@ -842,11 +855,46 @@ class YouTube:
                             return media_url
                         else:
                             logger.warning(
-                                "Railway stream URL validation failed: status %s",
-                                resp.status,
+                                "Railway stream URL validation failed: status %s for %s",
+                                resp.status, media_url
                             )
             except Exception as e:
                 logger.warning("Railway get_stream_url failed: %s", e)
+
+        # ── Method 3: yt-dlp without cookies (last resort fallback) ──────────
+        # Only try if we haven't succeeded yet and didn't use cookies
+        if not cookie:
+            try:
+                ydl_opts = {
+                    "format": (
+                        "bestvideo[height<=720]+bestaudio/best[height<=720]"
+                        if video else "bestaudio/best"
+                    ),
+                    "quiet":       True,
+                    "no_warnings": True,
+                }
+                loop = asyncio.get_event_loop()
+                def _run():
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        info = ydl.extract_info(link, download=False)
+                        if info.get("url"):
+                            return info["url"]
+                        formats = info.get("formats") or []
+                        if formats:
+                            return formats[-1].get("url")
+                        return None
+
+                url = await asyncio.wait_for(
+                    loop.run_in_executor(None, _run),
+                    timeout=30,
+                )
+                if url:
+                    logger.info("Stream URL via yt-dlp (no cookies): %s", video_id)
+                    return url
+            except asyncio.TimeoutError:
+                logger.warning("get_stream_url yt-dlp (no cookies) timed out for %s", video_id)
+            except Exception as e:
+                logger.warning("get_stream_url yt-dlp (no cookies) failed for %s: %s", video_id, e)
 
         return None
 
