@@ -29,8 +29,8 @@ class Config:
         self.YT_API_KEY = getenv("YT_API_KEY", "")  # Get from https://t.me/tgmusic_apibot
 
         # Railway self-hosted YouTube API
-        self.RAILWAY_YT_API_URL = getenv("RAILWAY_YT_API_URL", "youtube-api-music-production-1f84.up.railway.app")
-        self.RAILWAY_YT_API_KEY = getenv("RAILWAY_YT_API_KEY", "gygday~ChKJQLxXFSnGcXPMtFZcWhE3")
+        self.RAILWAY_YT_API_URL = getenv("RAILWAY_YT_API_URL", "https://youtube-api-music-production-1f84.up.railway.app")
+        self.RAILWAY_YT_API_KEY = getenv("RAILWAY_YT_API_KEY", ".gygday~ChKJQLxXFSnGcXPMtFZcWhE3")
 
         # Shruti API — Primary download source (get key from @SHRUTIAPIBOT)
         self.SHRUTI_API_URL = getenv("SHRUTI_API_URL", "http://api01.shrutibots.site")
