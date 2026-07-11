@@ -1,14 +1,30 @@
-<p align="center">
-    1. Upload your <b>Netscape format</b> youtube cookies to batbin.me<br>
-    2. Add <code>COOKIES_URL</code> variable in the env and enter the batbin url in the value.<br>
-    <i>Note: (Multiple values should be seperated by " ")</i>
-</p>
+# Netscape HTTP Cookie File
+# https://curl.haxx.se/rfc/cookie_spec.html
+# This is a generated file! Do not edit.
 
-<p align="center">
-    <b>or</b>
-</p>
-
-<p align="center">
-    Local storage for cookies.<br>
-    The file extension must be .txt and the cookie must be in <b>Netscape format.</b>
-</p>
+.youtube.com	TRUE	/	TRUE	1818309239	PREF	f4=4000000&tz=Asia.Calcutta&f7=100
+.youtube.com	TRUE	/	TRUE	1806603316	LOGIN_INFO	AFmmF2swRAIgW4TUI1VXx_TiekToDbtRe0o6M1Z7Ra07fAL_h4pv6KACIFeh4rBxF_PxfozYl1Q0IXoMQfjy5NFAuRRLmm2chRhk:QUQ3MjNmemV4WXBYaHRXMlBFNlktcXJyX2llLVliY2w4aVMzVjFZRGotdEZaQ0U1MEFkTDBUeENzZnRvVXpjbEp4ODFNR3BZTkotc0FDVGJmSHJ1YWwxWlZDTDVHSW9YbWcxeGRxb2dtUG5JSjhaX2R2eFhscDNWQW5VZG1WSE9GU2JqODQ5T0JhX21CaHVKWHV4cDNLUEdWU0dzMGRCbURB
+.youtube.com	TRUE	/	FALSE	1818138219	HSID	A3lBS4cgNC4M96Y6t
+.youtube.com	TRUE	/	TRUE	1818138219	SSID	A9wcXmfASkX8QC35Y
+.youtube.com	TRUE	/	FALSE	1818138219	APISID	lz9LtPz7YctOLdYF/Ay9G7kQwnu2y07M15
+.youtube.com	TRUE	/	TRUE	1818138219	SAPISID	jKn30MpAnIVR7HeD/AY-RhkccXdnXydHLn
+.youtube.com	TRUE	/	TRUE	1818138219	__Secure-1PAPISID	jKn30MpAnIVR7HeD/AY-RhkccXdnXydHLn
+.youtube.com	TRUE	/	TRUE	1818138219	__Secure-3PAPISID	jKn30MpAnIVR7HeD/AY-RhkccXdnXydHLn
+.youtube.com	TRUE	/	TRUE	1791280085	__Secure-BUCKET	CEY
+.youtube.com	TRUE	/	FALSE	1818138219	SID	g.a000_wjQjLLrZ0BG3RPZaf8R_T8MwL3H1fcx2Tbagj6xOz_PrIIQ_Ymb5GBH59j1NGGxOcl9JQACgYKARYSARcSFQHGX2MiDW0WdIQy2o1Uimd1yDBlbhoVAUF8yKqnES9qRErXX4F4-1ycM0CU0076
+.youtube.com	TRUE	/	TRUE	1818138219	__Secure-1PSID	g.a000_wjQjLLrZ0BG3RPZaf8R_T8MwL3H1fcx2Tbagj6xOz_PrIIQcAfG5P92cC6CFOrQsvKtCgACgYKAdwSARcSFQHGX2Miz2jt4H8Cjc1s1ue7-xvqKxoVAUF8yKravvQT1ZJwVc4HINALtj270076
+.youtube.com	TRUE	/	TRUE	1818138219	__Secure-3PSID	g.a000_wjQjLLrZ0BG3RPZaf8R_T8MwL3H1fcx2Tbagj6xOz_PrIIQFKe8Whq0vCbF5Kvw3Bef9gACgYKAeoSARcSFQHGX2Mi8SucOi-XV3d51QU6XZrYahoVAUF8yKr5yVlxvqnFRncO48-p-Bjj0076
+.youtube.com	TRUE	/	TRUE	1815285048	__Secure-1PSIDTS	sidts-CjUBPWEu2TSOs9AgnDeUWPRZlGHSWi511T5RUgHKyYGpthwuDKrydBl46xzk8DWYt5U3plJv6RAA
+.youtube.com	TRUE	/	TRUE	1815285048	__Secure-3PSIDTS	sidts-CjUBPWEu2TSOs9AgnDeUWPRZlGHSWi511T5RUgHKyYGpthwuDKrydBl46xzk8DWYt5U3plJv6RAA
+.youtube.com	TRUE	/	TRUE	1783750003	CONSISTENCY	AFeheW0Fu7rFvaYGU4YgKbejCjTUo7qpj2VPNGsuFHXKt86-nhwbiv1iSDN-elsuPrF3T3p6LGlZkV-RXqJeEGk-pQyqQi8oa1_e874scmQUPLvz_LHlTp-uky7_1zLvDOigx1S0RhIuzYTmfjlRDapu
+.youtube.com	TRUE	/	FALSE	1815285416	SIDCC	AKEyXzW_5Xsr9Yi0XccUBzbg6Oj6JXYAHecm_KxRUkajJ1hhSNgA8FW2EH1JAC4LiHcodhjnUw
+.youtube.com	TRUE	/	TRUE	1815285416	__Secure-1PSIDCC	AKEyXzXdIPDCCSUN4QAtikTgX3QDxSeQ_jo6zJ-j4ZuhUVJM7w8kWlJinRq7SCI1gegdyCae4g
+.youtube.com	TRUE	/	TRUE	1815285416	__Secure-3PSIDCC	AKEyXzUn9woV_rr_HvoQeAwI1CpwOlh3-VkD7aUsbSwZx22DtAbByLH_y-f1ch_jwxo0-0jY1-U
+.youtube.com	TRUE	/	TRUE	1799301235	VISITOR_INFO1_LIVE	IYEs_e2nuZk
+.youtube.com	TRUE	/	TRUE	1799301235	VISITOR_PRIVACY_METADATA	CgJJThIEGgAgaQ%3D%3D
+.youtube.com	TRUE	/	TRUE	1792122201	VISITOR_INFO1_LIVE	chfHj35cLgU
+.youtube.com	TRUE	/	TRUE	1792122201	VISITOR_PRIVACY_METADATA	CgJJThIEGgAgOQ%3D%3D
+.youtube.com	TRUE	/	TRUE	1792122201	__Secure-ROLLOUT_TOKEN	CMKCq_2r3qypWRC5lLnP__iTAxi5lLnP__iTAw%3D%3D
+.youtube.com	TRUE	/	TRUE	1799248477	__Secure-YNID	19.YT=pMFnkpT0m_ql6KMGB83cfEQEC4cz_phA1JYcoOtCyQe0IqhI-46AXVp3pnHYR_owmyF9ZiUCERjgdyvhrvpGn3VQMekKc5-YwAf2zZ7wTMgFU5Y4B4b2biIWl2noUe7FaCLT7FjzlWe9A9hMy9vpGOeRwfxyWIeyPprkPXSnt6c-AoIEkAuNF3F44PVGnzYWKlkvbmuSaZQRA5I42jkAEgeYYwrhG9qA-qEIJvcY8_GM1FCDwQFe6QEXhKkng1CUNaRHsRVE_3orxfAgbtVWif6fGa9i7NT0dOlmt9mxRU6BzFFZENjfjdanNvR14mDWvoYySv2DWtQTA1Mi3GHbzA
+.youtube.com	TRUE	/	TRUE	1799248477	__Secure-ROLLOUT_TOKEN	CKeAtuzd68GTERD3ubub2-CSAxiBrKCUs8iVAw%3D%3D
+.youtube.com	TRUE	/	TRUE	0	YSC	30T6MaOyKEs
